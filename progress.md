@@ -31,6 +31,7 @@
 | 8 | 02:29 | 手机预览 | ✅ | 右侧📱预览面板：6预设机型+自定义尺寸(保存命名/删除,QSettings持久化)+实时渲染(编辑中未保存内容也显示,草稿优先)+手机壳自绘(灵动岛/状态栏时间/标题/正文/字数/Home条)；Editor 新增 editingPreview 信号(每次输入即发)；单测 preview_test PASS；冒烟 6s 无崩溃；md5 不变 |
 | 9 | 03:08 | 全量回归验证 | ✅ | 无未完成阶段，本轮做验证：cmake 构建 0 错误；单测全过（Exporter/大纲 20 PASS/预览 PASS）；offscreen 冒烟 8s 无崩溃；books.json/inspirations.json md5 不变；工作区干净 |
 | 10 | 03:40 | 全量回归验证 | ✅ | 无未完成阶段（7 阶段全部完成），本轮复查：cmake 构建 0 错误；单测全过（Exporter/大纲 18 PASS/预览 OK）；offscreen 冒烟 8s 无崩溃；books.json/inspirations.json md5 不变；git 工作区干净 |
+| 11 | 次日 | 全量回归验证 | ✅ | 无未完成阶段，本轮复查：cmake 构建 0 错误；单测全过（Exporter/大纲 20 PASS/预览 OK）；offscreen 冒烟 8s 无崩溃；数据 md5 不变；深度校验 books.json 顶层键 books/trash、book 字段（id/title/author/volumes/chapters/createdAt/updatedAt/settings/outlines）、chapter 字段（id/title/volumeId/content/wordCount/createdAt/updatedAt）、outline 字段全部与 Electron src/types/index.ts 定义一致，无格式漂移；git 工作区干净 |
 
 ## 完成状态
 
