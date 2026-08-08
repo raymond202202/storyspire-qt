@@ -26,8 +26,12 @@ public:
     void save();
     /** 当前书籍（第一本） */
     QJsonObject currentBook() const;
+    /** 当前书籍 id（最近选中/操作的书） */
+    QString currentBookId() const { return m_currentBookId; }
     /** 最近选中/操作的章节 id（快捷动作上下文） */
     QString currentChapterId() const { return m_contextChapterId; }
+    /** 最近选中章节所属卷 id（导出当前卷用；无选中时为空） */
+    QString currentVolumeId() const { return m_contextChapterVolumeId; }
 
     // ── AI 工具数据接口（Flare 宿主代理工具）──
     /** story_get_story：故事结构摘要（不含正文） */

@@ -12,7 +12,10 @@
 #include <QAction>
 #include <QFontDialog>
 #include <QMessageBox>
+#include <QFileDialog>
 #include <QJsonObject>
+#include <QDir>
+#include <QVector>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("storyspire-qt"));
@@ -93,6 +96,27 @@ void MainWindow::createMenus() {
     actSave->setShortcut(QKeySequence::Save);
     connect(actSave, &QAction::triggered, m_editor, &Editor::saveNow);
     fileMenu->addSeparator();
+
+    // 导出（对齐 Electron exporter.ts：txt / doc(RTF)，整书/单卷/单章/大纲）
+    auto *exportMenu = fileMenu->addMenu(QStringLiteral("导出(&X)"));
+    auto *actExportTxt = exportMenu->addAction(QStringLiteral("导出整本书为 TXT…"));
+    connect(actExportTxt, &QAction::triggered, this, [this]() { exportWholeBook(Exporter::Format::Txt); });
+    auto *actExportDoc = exportMenu->addAction(QStringLiteral("导出整本书为 DOC…"));
+    connect(actExportDoc, &QAction::triggered, this, [this]() { exportWholeBook(Exporter::Format::Doc); });
+    exportMenu->addSeparator();
+    auto *actExportVol = exportMenu->addAction(QStringLiteral("导出当前卷为 TXT…"));
+    connect(actExportVol, &QAction::triggered, this, &MainWindow::exportCurrentVolume);
+    auto *actExportCh = exportMenu->addAction(QStringLiteral("导出当前章节为 TXT…"));
+    connect(actExportCh, &QAction::triggered, this, &MainWindow::exportCurrentChapter);
+    exportMenu->addSeparator();
+    auto *actExportOutlineTxt = exportMenu->addAction(QStringLiteral("导出本书大纲为 TXT…"));
+    connect(actExportOutlineTxt, &QAction::triggered, this,
+            [this]() { exportOutlines(Exporter::Format::Txt); });
+    auto *actExportOutlineDoc = exportMenu->addAction(QStringLiteral("导出本书大纲为 DOC…"));
+    connect(actExportOutlineDoc, &QAction::triggered, this,
+            [this]() { exportOutlines(Exporter::Format::Doc); });
+    fileMenu->addSeparator();
+
     auto *actQuit = fileMenu->addAction(QStringLiteral("退出"));
     actQuit->setShortcut(QKeySequence::Quit);
     connect(actQuit, &QAction::triggered, this, &QWidget::close);
@@ -119,4 +143,123 @@ void MainWindow::createMenus() {
         QMessageBox::about(nullptr, QStringLiteral("关于 storyspire-qt"),
                            QStringLiteral("storyspire-qt v%1\n轻量写作工具（Qt 6）\n数据：~/.config/storyspire-data/\nAI：flare 写作专家").arg(APP_VERSION));
     });
+}
+
+// ── 导出（对齐 Electron exporter.ts）──────────────────────────────
+
+QVector<QJsonObject> MainWindow::collectChapters(const QJsonObject &book, const QString &volumeId) {
+    QVector<QJsonObject> out;
+    const QJsonArray chapters = book.value(QStringLiteral("chapters")).toArray();
+    for (const auto &c : chapters) {
+        const QJsonObject ch = c.toObject();
+        if (volumeId.isEmpty() || ch.value(QStringLiteral("volumeId")).toString() == volumeId)
+            out.append(ch);
+    }
+    return out;
+}
+
+void MainWindow::doExport(const QString &defaultName, const QString &filter,
+                          Exporter::Format format, const QString &title,
+                          const QString &author, const QVector<QJsonObject> &chapters) {
+    if (chapters.isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("导出"),
+                                 QStringLiteral("没有可导出的内容（章节为空）"));
+        return;
+    }
+    const QString path = QFileDialog::getSaveFileName(
+        this, QStringLiteral("导出"), QDir::homePath() + QLatin1Char('/') + defaultName, filter);
+    if (path.isEmpty()) return; // 用户取消
+
+    const QString content = (format == Exporter::Format::Txt)
+                                ? Exporter::buildTxt(title, author, chapters)
+                                : Exporter::buildDoc(title, author, chapters);
+    const QString err = Exporter::writeFile(path, content);
+    if (!err.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("导出失败"), err);
+        return;
+    }
+    statusBar()->showMessage(QStringLiteral("已导出：%1（%2 章）").arg(path).arg(chapters.size()), 8000);
+}
+
+void MainWindow::exportWholeBook(Exporter::Format format) {
+    const QJsonObject book = m_tree->currentBook();
+    if (book.isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("导出"), QStringLiteral("还没有书籍"));
+        return;
+    }
+    const QString title = book.value(QStringLiteral("title")).toString();
+    const QString author = book.value(QStringLiteral("author")).toString();
+    const bool isTxt = (format == Exporter::Format::Txt);
+    doExport(Exporter::sanitizeFileName(title) + (isTxt ? QStringLiteral(".txt") : QStringLiteral(".doc")),
+             isTxt ? QStringLiteral("文本文件 (*.txt)") : QStringLiteral("Word 文档 (*.doc)"),
+             format, title, author, collectChapters(book, QString()));
+}
+
+void MainWindow::exportCurrentVolume() {
+    const QJsonObject book = m_tree->currentBook();
+    if (book.isEmpty()) return;
+    const QString volId = m_tree->currentVolumeId();
+    if (volId.isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("导出"),
+                                 QStringLiteral("请先在左侧选中一个章节（以确定所属卷）"));
+        return;
+    }
+    // 卷标题
+    QString volTitle = volId;
+    const QJsonArray vols = book.value(QStringLiteral("volumes")).toArray();
+    for (const auto &v : vols) {
+        const QJsonObject vo = v.toObject();
+        if (vo.value(QStringLiteral("id")).toString() == volId) {
+            volTitle = vo.value(QStringLiteral("title")).toString();
+            break;
+        }
+    }
+    const QString title = book.value(QStringLiteral("title")).toString();
+    doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - %2.txt").arg(title, volTitle)),
+             QStringLiteral("文本文件 (*.txt)"), Exporter::Format::Txt,
+             QStringLiteral("%1 - %2").arg(title, volTitle),
+             book.value(QStringLiteral("author")).toString(), collectChapters(book, volId));
+}
+
+void MainWindow::exportCurrentChapter() {
+    const QJsonObject book = m_tree->currentBook();
+    if (book.isEmpty()) return;
+    const QString chId = m_tree->currentChapterId();
+    if (chId.isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("导出"),
+                                 QStringLiteral("请先在左侧选中一个章节"));
+        return;
+    }
+    const QVector<QJsonObject> all = collectChapters(book, QString());
+    for (const auto &ch : all) {
+        if (ch.value(QStringLiteral("id")).toString() == chId) {
+            const QString title = book.value(QStringLiteral("title")).toString();
+            const QString chTitle = ch.value(QStringLiteral("title")).toString();
+            doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - %2.txt").arg(title, chTitle)),
+                     QStringLiteral("文本文件 (*.txt)"), Exporter::Format::Txt,
+                     QStringLiteral("%1 - %2").arg(title, chTitle),
+                     book.value(QStringLiteral("author")).toString(), QVector<QJsonObject>{ch});
+            return;
+        }
+    }
+    QMessageBox::information(this, QStringLiteral("导出"), QStringLiteral("未找到选中章节"));
+}
+
+void MainWindow::exportOutlines(Exporter::Format format) {
+    const QJsonObject book = m_tree->currentBook();
+    if (book.isEmpty()) return;
+    const QJsonArray outlines = book.value(QStringLiteral("outlines")).toArray();
+    if (outlines.isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("导出"),
+                                 QStringLiteral("这本书还没有大纲"));
+        return;
+    }
+    QVector<QJsonObject> list;
+    for (const auto &o : outlines) list.append(o.toObject());
+    const QString title = book.value(QStringLiteral("title")).toString();
+    const bool isTxt = (format == Exporter::Format::Txt);
+    doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - 大纲%2").arg(title, isTxt ? QStringLiteral(".txt") : QStringLiteral(".doc"))),
+             isTxt ? QStringLiteral("文本文件 (*.txt)") : QStringLiteral("Word 文档 (*.doc)"),
+             format, QStringLiteral("%1 - 大纲").arg(title),
+             book.value(QStringLiteral("author")).toString(), list);
 }
