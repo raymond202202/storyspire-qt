@@ -1,0 +1,36 @@
+# storyspire-qt 迭代进度
+
+> 目标：把 Electron 版 StorySpire（写作专家）重写为 Qt 版（轻量写作工具）
+> 参考源码：`~/hermes-projects/storyspire`（Electron 版，功能对齐源）
+> **数据兼容**：读写 `~/.config/storyspire-data/books.json`（与 Electron 版同路径同格式，切换版本数据不丢）
+> 规则：每轮实现后 cmake 构建验证 + git commit（本地，**禁止 git push**）；每轮结束更新本文件
+
+## 阶段清单（按序迭代）
+
+- [x] **阶段 0 骨架**：CMake + 主窗口（左书/章树 + 中编辑器）+ BookTree（读 books.json 多书/章节树 + 新建书/章）+ Editor（标题 + QTextEdit + 字数）+ 数据兼容（~/.config/storyspire-data/books.json，构建通过，二进制 135KB）
+- [ ] **阶段 1 编辑保存**：Editor 编辑内容实时写回 books.json（点章节切换时保存当前 + 自动保存防丢失）；章节重命名/删除（右键菜单）
+- [ ] **阶段 2 灵感库**：右侧灵感面板（读 inspirations.json 或 localStorage 兼容），灵感列表 + 新建/编辑/删除
+- [ ] **阶段 3 AI 面板**：接 flare server（spawn node 子进程，'flare server' 命令，协议见 ~/hermes-projects/flare/docs/host-protocol.md），写作专家（续写/润色/扩写）；写回章节前用户确认（应用一次/本次会话/始终/拒绝，参考 Electron 版 ConfirmModal）
+- [ ] **阶段 4 打磨**：浅色主题白底紫配 #6d4aff/状态栏保存状态/字体设置/快捷键
+
+## 迭代记录
+
+| 轮次 | 时间 | 完成 | 构建 | 备注 |
+|------|------|------|------|------|
+| 0 | 22:16 | 骨架 | ✅ | 数据兼容 books.json |
+
+## 构建命令
+
+```bash
+cd ~/hermes-projects/storyspire-qt
+cmake -B build && cmake --build build -j$(nproc)
+./build/storyspire-qt
+```
+
+## 铁律
+
+- **禁止 git push**（用户明早验收后才决定是否推 GitHub）
+- 不动其他仓库（storyspire/pulse/flare/json-viewer 只读参考）
+- 每轮必须构建通过才 commit；构建失败修复后继续
+- UI 浅色主题白底紫配 #6d4aff
+- **不要做富文本/HTML 迁移**（QTextEdit 纯文本即可；content 字段存纯文本，Electron 版 HTML 内容显示为纯文本可接受）——复杂功能留给用户验收后交互式做
