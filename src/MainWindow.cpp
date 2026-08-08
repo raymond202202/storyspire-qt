@@ -1,21 +1,26 @@
 #include "MainWindow.h"
 #include "BookTree.h"
 #include "Editor.h"
+#include "InspirationPanel.h"
 #include <QSplitter>
 #include <QStatusBar>
 #include <QLabel>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("storyspire-qt"));
-    resize(1200, 800);
+    resize(1400, 800);
 
     auto *splitter = new QSplitter(Qt::Horizontal, this);
     m_tree = new BookTree(this);
     m_editor = new Editor(this);
+    m_inspiration = new InspirationPanel(this);
     splitter->addWidget(m_tree);
     splitter->addWidget(m_editor);
+    splitter->addWidget(m_inspiration);
     splitter->setStretchFactor(0, 1);
     splitter->setStretchFactor(1, 3);
+    splitter->setStretchFactor(2, 1);
+    splitter->setSizes({260, 780, 260});
     setCentralWidget(splitter);
 
     // 点章节 → 编辑器加载

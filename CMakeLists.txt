@@ -19,6 +19,8 @@ qt_add_executable(storyspire-qt
     src/BookTree.h
     src/Editor.cpp
     src/Editor.h
+    src/InspirationPanel.cpp
+    src/InspirationPanel.h
 )
 
 target_link_libraries(storyspire-qt PRIVATE Qt6::Widgets Qt6::Network Qt6::Sql)
