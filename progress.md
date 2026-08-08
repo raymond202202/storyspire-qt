@@ -38,6 +38,7 @@
 | 14 | 次日 | 全量回归验证 | ✅ | 无未完成阶段，本轮复查：cmake 构建 0 错误；单测全过（Exporter/大纲 20 PASS/预览 OK）；offscreen 冒烟 14s 无崩溃；数据 md5 不变（books.json ac6da96e / inspirations.json 18258e3c）；新增 scripts/validate_data.py 固化严格口径深度校验（空 volumeId 也视为悬空）→ **发现 1 条历史遗留脏数据**：章节 c537abd9（UUID 格式 id，Electron 早期版本创建，非 Qt 引入）volumeId='' 悬空，Qt 版树中可见可编辑不丢数据，未擅自修改用户数据，待用户决定是否修复（修复方式：把该章节 volumeId 指向 dddce641 书的唯一卷 0767ad43）；git 工作区干净 |
 | 15 | 次日 | 全量回归验证 | ✅ | 无未完成阶段，本轮复查：cmake 构建 0 错误；单测全过（Exporter 30 PASS/大纲 20 PASS/预览 OK）；offscreen 冒烟 14s 无崩溃（exit=124）；数据 md5 不变（books.json ac6da96e / inspirations.json 18258e3c）；格式深度校验仅剩第14轮已记录的历史遗留脏数据 1 条（章节 c537abd9 volumeId='' 悬空，Electron 早期创建，Qt 版可见可编辑不丢数据，未擅自修改，仍待用户决定）；git 工作区干净 |
 | 16 | 次日 | 全量回归验证 | ✅ | 无未完成阶段，本轮复查：cmake 构建 0 错误；单测全过（Exporter 30 PASS/大纲 20 PASS/预览 OK）；offscreen 冒烟 14s 无崩溃（exit=124）；数据 md5 不变（books.json ac6da96e / inspirations.json 18258e3c）；格式深度校验仍仅剩第14轮已记录的历史遗留脏数据 1 条（章节 c537abd9 volumeId='' 悬空，Electron 早期创建，Qt 版可见可编辑不丢数据，未擅自修改，仍待用户决定）；git 工作区干净 |
+| 17 | 次日 | 全量回归验证 | ✅ | 无未完成阶段，本轮复查：cmake 构建 0 错误；单测全过（Exporter 30 PASS/大纲 20 PASS/预览 OK）；offscreen 冒烟 20s 无崩溃（exit=124）；数据 md5 不变（books.json ac6da96e / inspirations.json 18258e3c）；格式深度校验仍仅剩第14轮已记录的历史遗留脏数据 1 条（章节 c537abd9 volumeId='' 悬空，Electron 早期创建，Qt 版可见可编辑不丢数据，未擅自修改，仍待用户决定）；git 工作区干净 |
 
 ## 完成状态
 
