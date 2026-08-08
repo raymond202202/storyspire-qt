@@ -6,7 +6,9 @@
 #include <QLabel>
 #include <QTimer>
 #include <QTime>
+#include <QSettings>
 #include <QRegularExpression>
+#include <QFont>
 
 Editor::Editor(QWidget *parent) : QWidget(parent) {
     auto *layout = new QVBoxLayout(this);
@@ -36,6 +38,7 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
         m_dirty = true;
         m_wordCount->setText(QStringLiteral("%1 字").arg(countWords(m_body->toPlainText())));
         m_saveState->setText(QStringLiteral("● 未保存"));
+        emit saveStateChanged(m_saveState->text());
         m_autoSave->start();
     });
 
@@ -48,6 +51,13 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
     });
 
     connect(m_autoSave, &QTimer::timeout, this, &Editor::flushContent);
+
+    // 应用已保存的编辑器字体
+    QSettings settings;
+    const QFont savedFont = settings.value(QStringLiteral("editor/font")).value<QFont>();
+    if (savedFont != m_body->font()) {
+        m_body->document()->setDefaultFont(savedFont);
+    }
 }
 
 void Editor::loadChapter(const QString &bookId, const QString &chapterId,
@@ -63,6 +73,7 @@ void Editor::loadChapter(const QString &bookId, const QString &chapterId,
     m_loading = false;
     m_wordCount->setText(QStringLiteral("%1 字").arg(countWords(contentHtml)));
     m_saveState->setText(QStringLiteral("✓ 已保存"));
+    emit saveStateChanged(m_saveState->text());
 }
 
 void Editor::clearChapter() {
@@ -74,6 +85,7 @@ void Editor::clearChapter() {
     m_body->clear();
     m_wordCount->setText(QStringLiteral("0 字"));
     m_saveState->clear();
+    emit saveStateChanged(QString());
     m_loading = false;
 }
 
@@ -89,6 +101,17 @@ void Editor::reloadContent(const QString &content) {
     m_loading = false;
     m_wordCount->setText(QStringLiteral("%1 字").arg(countWords(content)));
     m_saveState->setText(QStringLiteral("✓ 已保存（AI 写回）"));
+    emit saveStateChanged(m_saveState->text());
+}
+
+void Editor::saveNow() {
+    flushContent();
+}
+
+void Editor::setEditorFont(const QFont &font) {
+    m_body->document()->setDefaultFont(font);
+    QSettings settings;
+    settings.setValue(QStringLiteral("editor/font"), font);
 }
 
 void Editor::flushContent() {
@@ -98,6 +121,7 @@ void Editor::flushContent() {
     emit contentEdited(m_bookId, m_chapterId, text, countWords(text));
     m_saveState->setText(QStringLiteral("✓ 已自动保存 %1")
                              .arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
+    emit saveStateChanged(m_saveState->text());
 }
 
 int Editor::countWords(const QString &text) const {

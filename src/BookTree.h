@@ -56,6 +56,14 @@ public slots:
                                    const QString &content, int wordCount);
     /** 重命名章节（标题栏编辑或右键菜单，与 Electron renameChapter 语义一致） */
     void renameChapter(const QString &bookId, const QString &chapterId, const QString &title);
+    /** 新建书籍（菜单/快捷键） */
+    void newBook() { onNewBook(); }
+    /** 新建章节（菜单/快捷键） */
+    void newChapter() { onNewChapter(); }
+    /** 重命名当前选中章节（F2） */
+    void renameCurrentChapter() { onRenameAction(); }
+    /** 删除当前选中章节（菜单） */
+    void deleteCurrentChapter() { onDeleteAction(); }
 
 private slots:
     void onItemClicked(QTreeWidgetItem *item, int column);

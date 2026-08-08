@@ -22,6 +22,8 @@ signals:
                        const QString &content, int wordCount);
     /** 标题编辑完成（回车/失焦） */
     void titleEdited(const QString &bookId, const QString &chapterId, const QString &title);
+    /** 保存状态文本变化（供状态栏显示） */
+    void saveStateChanged(const QString &text);
 
 public slots:
     void loadChapter(const QString &bookId, const QString &chapterId,
@@ -32,6 +34,10 @@ public slots:
     void updateTitle(const QString &title);
     /** AI/外部写回当前章节后刷新正文（不触发写回） */
     void reloadContent(const QString &content);
+    /** 立即保存（Ctrl+S） */
+    void saveNow();
+    /** 设置编辑器正文字体（持久化 QSettings） */
+    void setEditorFont(const QFont &font);
 
 private slots:
     void flushContent();
