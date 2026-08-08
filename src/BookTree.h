@@ -26,17 +26,34 @@ public:
     void save();
     /** 当前书籍（第一本） */
     QJsonObject currentBook() const;
+    /** 最近选中/操作的章节 id（快捷动作上下文） */
+    QString currentChapterId() const { return m_contextChapterId; }
+
+    // ── AI 工具数据接口（Flare 宿主代理工具）──
+    /** story_get_story：故事结构摘要（不含正文） */
+    QJsonObject storySummary() const;
+    /** story_get_chapter：按 id 或标题获取章节完整内容 */
+    QJsonObject getChapter(const QString &chapterIdOrTitle) const;
+    /** story_list_chapters：章节列表（id/标题/字数/卷） */
+    QJsonArray listChapters() const;
+    /** story_create_chapter：新建章节（返回新章节 id，失败返回空） */
+    QString createChapter(const QString &title, const QString &content);
 
 signals:
     void chapterSelected(const QString &bookId, const QString &chapterId, const QString &title, const QString &contentHtml);
     void chapterRenamed(const QString &bookId, const QString &chapterId, const QString &title);
     void chapterDeleted(const QString &bookId, const QString &chapterId);
+    /** 章节内容被写回（含 AI 工具写回），供编辑器刷新 */
+    void chapterContentApplied(const QString &bookId, const QString &chapterId);
     void booksChanged();
 
 public slots:
-    /** 编辑器实时写回：更新章节 content/wordCount/updatedAt 并落盘 */
+    /** 编辑器实时写回：更新章节 content/wordCount/updatedAt 并落盘（用户编辑路径，不通知刷新） */
     void applyChapterContent(const QString &bookId, const QString &chapterId,
                              const QString &content, int wordCount);
+    /** AI 工具写回：更新章节并落盘，随后 emit chapterContentApplied 通知界面刷新 */
+    void applyChapterContentFromAi(const QString &bookId, const QString &chapterId,
+                                   const QString &content, int wordCount);
     /** 重命名章节（标题栏编辑或右键菜单，与 Electron renameChapter 语义一致） */
     void renameChapter(const QString &bookId, const QString &chapterId, const QString &title);
 
@@ -67,4 +84,7 @@ private:
     QJsonObject findBook(const QString &id) const;
     int findBookIndex(const QString &id) const;
     void deleteChapterInternal(const QString &bookId, const QString &chapterId);
+    /** 写回章节内容（notify=true 时 emit chapterContentApplied） */
+    bool writeChapterContent(const QString &bookId, const QString &chapterId,
+                             const QString &content, int wordCount, bool notify);
 };

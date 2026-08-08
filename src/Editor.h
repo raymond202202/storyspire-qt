@@ -30,6 +30,8 @@ public slots:
     void clearChapter();
     /** 树侧右键重命名后同步标题栏 */
     void updateTitle(const QString &title);
+    /** AI/外部写回当前章节后刷新正文（不触发写回） */
+    void reloadContent(const QString &content);
 
 private slots:
     void flushContent();

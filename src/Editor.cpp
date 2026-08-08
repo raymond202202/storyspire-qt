@@ -81,6 +81,16 @@ void Editor::updateTitle(const QString &title) {
     if (m_title->text() != title) m_title->setText(title);
 }
 
+void Editor::reloadContent(const QString &content) {
+    if (m_loading || m_chapterId.isEmpty()) return;
+    m_loading = true;
+    m_body->setPlainText(content);
+    m_dirty = false;
+    m_loading = false;
+    m_wordCount->setText(QStringLiteral("%1 字").arg(countWords(content)));
+    m_saveState->setText(QStringLiteral("✓ 已保存（AI 写回）"));
+}
+
 void Editor::flushContent() {
     if (!m_dirty || m_chapterId.isEmpty()) return;
     m_dirty = false;

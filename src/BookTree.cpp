@@ -14,6 +14,7 @@
 #include <QDialog>
 #include <QLineEdit>
 #include <QTimer>
+#include <QRegularExpression>
 
 BookTree::BookTree(QWidget *parent) : QWidget(parent) {
     const QString configDir = QString::fromLocal8Bit(qgetenv("XDG_CONFIG_HOME"));
@@ -120,6 +121,158 @@ QJsonObject BookTree::currentBook() const {
     return m_books.first().toObject();
 }
 
+namespace {
+int bookCountWords(const QString &text) {
+    const int zh = text.count(QRegularExpression(QStringLiteral("[\\u4e00-\\u9fff\\u3400-\\u4dbf]")));
+    const int en = text.split(QRegularExpression(QStringLiteral("[^a-zA-Z]+")), Qt::SkipEmptyParts).size();
+    return zh + en;
+}
+} // namespace
+
+QJsonObject BookTree::storySummary() const {
+    QJsonObject out;
+    if (m_books.isEmpty()) {
+        out["success"] = false;
+        out["error"] = QStringLiteral("还没有故事（先在应用里新建故事）");
+        return out;
+    }
+    const QJsonObject book = m_books.first().toObject();
+    out["success"] = true;
+    out["title"] = book.value("title");
+    out["author"] = book.value("author");
+    QJsonArray vols;
+    for (const auto &v : book.value("volumes").toArray()) {
+        const QJsonObject vo = v.toObject();
+        QJsonObject vv;
+        vv["id"] = vo.value("id");
+        vv["title"] = vo.value("title");
+        vols.append(vv);
+    }
+    out["volumes"] = vols;
+    QJsonArray chs;
+    for (const auto &c : book.value("chapters").toArray()) {
+        const QJsonObject co = c.toObject();
+        QJsonObject cc;
+        cc["id"] = co.value("id");
+        cc["title"] = co.value("title");
+        cc["volumeId"] = co.value("volumeId");
+        cc["wordCount"] = co.value("wordCount");
+        chs.append(cc);
+    }
+    out["chapters"] = chs;
+    return out;
+}
+
+QJsonObject BookTree::getChapter(const QString &chapterIdOrTitle) const {
+    QJsonObject out;
+    if (m_books.isEmpty()) {
+        out["success"] = false;
+        out["error"] = QStringLiteral("没有故事");
+        return out;
+    }
+    const QJsonObject book = m_books.first().toObject();
+    const QJsonArray chapters = book.value("chapters").toArray();
+    QJsonObject hit;
+    for (const auto &c : chapters) {
+        const QJsonObject co = c.toObject();
+        if (co.value("id").toString() == chapterIdOrTitle) { hit = co; break; }
+    }
+    // 容错：支持按标题匹配（对齐 Electron storyTools）
+    if (hit.isEmpty() && !chapterIdOrTitle.isEmpty()) {
+        for (const auto &c : chapters) {
+            const QJsonObject co = c.toObject();
+            const QString t = co.value("title").toString();
+            if (t == chapterIdOrTitle || t.contains(chapterIdOrTitle) ||
+                (chapterIdOrTitle.contains(t) && chapterIdOrTitle.size() < 20)) {
+                hit = co;
+                break;
+            }
+        }
+    }
+    if (hit.isEmpty()) {
+        out["success"] = false;
+        out["error"] = QStringLiteral("未找到章节「%1」（先用 story_list_chapters 获取正确的 chapterId）").arg(chapterIdOrTitle);
+        return out;
+    }
+    out["success"] = true;
+    out["id"] = hit.value("id");
+    out["title"] = hit.value("title");
+    out["content"] = hit.value("content");
+    out["wordCount"] = hit.value("wordCount");
+    return out;
+}
+
+QJsonArray BookTree::listChapters() const {
+    QJsonObject out;
+    if (m_books.isEmpty()) {
+        out["success"] = false;
+        out["error"] = QStringLiteral("没有故事");
+        return QJsonArray{out};
+    }
+    const QJsonObject book = m_books.first().toObject();
+    QJsonArray list;
+    for (const auto &c : book.value("chapters").toArray()) {
+        const QJsonObject co = c.toObject();
+        QJsonObject cc;
+        cc["id"] = co.value("id");
+        cc["title"] = co.value("title");
+        cc["wordCount"] = co.value("wordCount");
+        cc["volumeId"] = co.value("volumeId");
+        list.append(cc);
+    }
+    out["success"] = true;
+    out["chapters"] = list;
+    return QJsonArray{out};
+}
+
+QString BookTree::createChapter(const QString &title, const QString &content) {
+    if (m_books.isEmpty()) return QString();
+    const QString now = QDateTime::currentDateTime().toString(Qt::ISODate);
+    const int bookIdx = 0;
+    QJsonObject book = m_books.at(bookIdx).toObject();
+
+    QString volId = m_contextChapterVolumeId;
+    if (volId.isEmpty()) {
+        const QJsonArray vols = book.value("volumes").toArray();
+        if (!vols.isEmpty()) volId = vols.first().toObject().value("id").toString();
+    }
+    if (volId.isEmpty()) {
+        QJsonObject vol;
+        vol["id"] = QStringLiteral("v_%1").arg(QDateTime::currentMSecsSinceEpoch());
+        vol["title"] = QStringLiteral("第一卷");
+        vol["order"] = 1;
+        vol["createdAt"] = now;
+        QJsonArray vols = book.value("volumes").toArray();
+        vols.append(vol);
+        book["volumes"] = vols;
+        volId = vol.value("id").toString();
+    }
+
+    QJsonArray chapters = book.value("chapters").toArray();
+    QJsonObject ch;
+    ch["id"] = QStringLiteral("c_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    ch["title"] = title.trimmed().isEmpty() ? QStringLiteral("新章节") : title.trimmed();
+    ch["volumeId"] = volId;
+    ch["content"] = content;
+    ch["wordCount"] = bookCountWords(content);
+    ch["createdAt"] = now;
+    ch["updatedAt"] = now;
+    chapters.append(ch);
+    book["chapters"] = chapters;
+    book["updatedAt"] = now;
+    m_books.replace(bookIdx, book);
+    m_currentBookId = book.value("id").toString();
+    m_contextChapterId = ch.value("id").toString();
+    m_contextChapterVolumeId = volId;
+    save();
+    buildTree();
+    emit chapterSelected(book.value("id").toString(), ch.value("id").toString(),
+                         ch.value("title").toString(), content);
+    emit chapterContentApplied(book.value("id").toString(), ch.value("id").toString());
+    emit booksChanged();
+    return ch.value("id").toString();
+}
+
 void BookTree::buildTree() {
     m_tree->clear();
     for (const auto &bVal : m_books) {
@@ -185,8 +338,18 @@ void BookTree::onItemClicked(QTreeWidgetItem *item, int) {
 
 void BookTree::applyChapterContent(const QString &bookId, const QString &chapterId,
                                    const QString &content, int wordCount) {
+    writeChapterContent(bookId, chapterId, content, wordCount, false);
+}
+
+void BookTree::applyChapterContentFromAi(const QString &bookId, const QString &chapterId,
+                                         const QString &content, int wordCount) {
+    writeChapterContent(bookId, chapterId, content, wordCount, true);
+}
+
+bool BookTree::writeChapterContent(const QString &bookId, const QString &chapterId,
+                                   const QString &content, int wordCount, bool notify) {
     const int bi = findBookIndex(bookId);
-    if (bi < 0 || chapterId.isEmpty()) return;
+    if (bi < 0 || chapterId.isEmpty()) return false;
     const QString now = QDateTime::currentDateTime().toString(Qt::ISODate);
     QJsonObject book = m_books.at(bi).toObject();
     QJsonArray chapters = book.value("chapters").toArray();
@@ -202,11 +365,12 @@ void BookTree::applyChapterContent(const QString &bookId, const QString &chapter
             break;
         }
     }
-    if (!changed) return;
+    if (!changed) return false;
     book["chapters"] = chapters;
     book["updatedAt"] = now;
     m_books.replace(bi, book);
     save();
+    if (notify) emit chapterContentApplied(bookId, chapterId);
     // 更新树上字数显示（不重建，保持展开状态）
     for (int b = 0; b < m_tree->topLevelItemCount(); ++b) {
         QTreeWidgetItem *bookItem = m_tree->topLevelItem(b);
@@ -220,6 +384,7 @@ void BookTree::applyChapterContent(const QString &bookId, const QString &chapter
         }
         break;
     }
+    return true;
 }
 
 void BookTree::renameChapter(const QString &bookId, const QString &chapterId, const QString &title) {

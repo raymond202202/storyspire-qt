@@ -5,6 +5,7 @@
 class BookTree;
 class Editor;
 class InspirationPanel;
+class AiPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -15,4 +16,5 @@ private:
     BookTree *m_tree = nullptr;
     Editor *m_editor = nullptr;
     InspirationPanel *m_inspiration = nullptr;
+    AiPanel *m_ai = nullptr;
 };

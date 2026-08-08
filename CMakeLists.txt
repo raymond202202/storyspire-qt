@@ -21,6 +21,10 @@ qt_add_executable(storyspire-qt
     src/Editor.h
     src/InspirationPanel.cpp
     src/InspirationPanel.h
+    src/FlareClient.cpp
+    src/FlareClient.h
+    src/AiPanel.cpp
+    src/AiPanel.h
 )
 
 target_link_libraries(storyspire-qt PRIVATE Qt6::Widgets Qt6::Network Qt6::Sql)
