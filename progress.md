@@ -29,6 +29,7 @@
 | 6 | 01:30 | 大纲系统 | ✅ | 右侧📋大纲面板（新建/编辑/重命名/删除，trash 带_outline）；单测 20 PASS；修复字数正则bug(\\u→\\x{}) |
 | 7 | 01:52 | 导出补全 | ✅ | 对齐 Electron 四格式：整书/卷/章/大纲 × TXT/DOCX/DOC/PDF；docx 手写 OOXML zip（修复中央目录缺 date 字段 bug）；pdf QPdfWriter 渲染；单测 29 PASS；真实数据 docx/pdf 冒烟通过；md5 不变 |
 | 8 | 02:29 | 手机预览 | ✅ | 右侧📱预览面板：6预设机型+自定义尺寸(保存命名/删除,QSettings持久化)+实时渲染(编辑中未保存内容也显示,草稿优先)+手机壳自绘(灵动岛/状态栏时间/标题/正文/字数/Home条)；Editor 新增 editingPreview 信号(每次输入即发)；单测 preview_test PASS；冒烟 6s 无崩溃；md5 不变 |
+| 9 | 03:08 | 全量回归验证 | ✅ | 无未完成阶段，本轮做验证：cmake 构建 0 错误；单测全过（Exporter/大纲 20 PASS/预览 PASS）；offscreen 冒烟 8s 无崩溃；books.json/inspirations.json md5 不变；工作区干净 |
 
 ## 完成状态
 
