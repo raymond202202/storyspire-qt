@@ -17,6 +17,7 @@
 #include <QJsonObject>
 #include <QDir>
 #include <QVector>
+#include <QPair>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("storyspire-qt"));
@@ -101,24 +102,29 @@ void MainWindow::createMenus() {
     connect(actSave, &QAction::triggered, m_editor, &Editor::saveNow);
     fileMenu->addSeparator();
 
-    // 导出（对齐 Electron exporter.ts：txt / doc(RTF)，整书/单卷/单章/大纲）
+    // 导出（对齐 Electron exporter.ts：txt / docx / doc(RTF) / pdf，整书/单卷/单章/大纲）
     auto *exportMenu = fileMenu->addMenu(QStringLiteral("导出(&X)"));
-    auto *actExportTxt = exportMenu->addAction(QStringLiteral("导出整本书为 TXT…"));
-    connect(actExportTxt, &QAction::triggered, this, [this]() { exportWholeBook(Exporter::Format::Txt); });
-    auto *actExportDoc = exportMenu->addAction(QStringLiteral("导出整本书为 DOC…"));
-    connect(actExportDoc, &QAction::triggered, this, [this]() { exportWholeBook(Exporter::Format::Doc); });
-    exportMenu->addSeparator();
-    auto *actExportVol = exportMenu->addAction(QStringLiteral("导出当前卷为 TXT…"));
-    connect(actExportVol, &QAction::triggered, this, &MainWindow::exportCurrentVolume);
-    auto *actExportCh = exportMenu->addAction(QStringLiteral("导出当前章节为 TXT…"));
-    connect(actExportCh, &QAction::triggered, this, &MainWindow::exportCurrentChapter);
-    exportMenu->addSeparator();
-    auto *actExportOutlineTxt = exportMenu->addAction(QStringLiteral("导出本书大纲为 TXT…"));
-    connect(actExportOutlineTxt, &QAction::triggered, this,
-            [this]() { exportOutlines(Exporter::Format::Txt); });
-    auto *actExportOutlineDoc = exportMenu->addAction(QStringLiteral("导出本书大纲为 DOC…"));
-    connect(actExportOutlineDoc, &QAction::triggered, this,
-            [this]() { exportOutlines(Exporter::Format::Doc); });
+    // 4 个范围子菜单，每个 4 种格式（txt / docx / doc / pdf）
+    const struct { const char *label; Exporter::Format format; } fmtItems[] = {
+        { "TXT…", Exporter::Format::Txt },
+        { "DOCX…", Exporter::Format::Docx },
+        { "DOC…", Exporter::Format::Doc },
+        { "PDF…", Exporter::Format::Pdf },
+    };
+    auto addFormatItems = [this, exportMenu, &fmtItems](const QString &scope, auto trigger) {
+        auto *sub = exportMenu->addMenu(scope);
+        for (const auto &fi : fmtItems) {
+            auto *act = sub->addAction(QStringLiteral("导出为 %1").arg(QString::fromUtf8(fi.label)));
+            connect(act, &QAction::triggered, this, [this, trigger, f = fi.format]() {
+                (this->*trigger)(f);
+            });
+        }
+        return sub;
+    };
+    addFormatItems(QStringLiteral("整本书"), &MainWindow::exportWholeBook);
+    addFormatItems(QStringLiteral("当前卷"), &MainWindow::exportCurrentVolume);
+    addFormatItems(QStringLiteral("当前章节"), &MainWindow::exportCurrentChapter);
+    addFormatItems(QStringLiteral("本书大纲"), &MainWindow::exportOutlines);
     fileMenu->addSeparator();
 
     auto *actQuit = fileMenu->addAction(QStringLiteral("退出"));
@@ -162,6 +168,16 @@ QVector<QJsonObject> MainWindow::collectChapters(const QJsonObject &book, const 
     return out;
 }
 
+QPair<QString, QString> MainWindow::exportExtFilter(Exporter::Format format) {
+    switch (format) {
+    case Exporter::Format::Txt:  return { QStringLiteral(".txt"),  QStringLiteral("文本文件 (*.txt)") };
+    case Exporter::Format::Docx: return { QStringLiteral(".docx"), QStringLiteral("Word 文档 (*.docx)") };
+    case Exporter::Format::Doc:  return { QStringLiteral(".doc"),  QStringLiteral("Word 文档 (*.doc)") };
+    case Exporter::Format::Pdf:  return { QStringLiteral(".pdf"),  QStringLiteral("PDF 文档 (*.pdf)") };
+    }
+    return { QStringLiteral(".txt"), QStringLiteral("文本文件 (*.txt)") };
+}
+
 void MainWindow::doExport(const QString &defaultName, const QString &filter,
                           Exporter::Format format, const QString &title,
                           const QString &author, const QVector<QJsonObject> &chapters) {
@@ -174,10 +190,21 @@ void MainWindow::doExport(const QString &defaultName, const QString &filter,
         this, QStringLiteral("导出"), QDir::homePath() + QLatin1Char('/') + defaultName, filter);
     if (path.isEmpty()) return; // 用户取消
 
-    const QString content = (format == Exporter::Format::Txt)
-                                ? Exporter::buildTxt(title, author, chapters)
-                                : Exporter::buildDoc(title, author, chapters);
-    const QString err = Exporter::writeFile(path, content);
+    QString err;
+    switch (format) {
+    case Exporter::Format::Txt:
+        err = Exporter::writeFile(path, Exporter::buildTxt(title, author, chapters));
+        break;
+    case Exporter::Format::Docx:
+        err = Exporter::writeFileBytes(path, Exporter::buildDocx(title, author, chapters));
+        break;
+    case Exporter::Format::Doc:
+        err = Exporter::writeFile(path, Exporter::buildDoc(title, author, chapters));
+        break;
+    case Exporter::Format::Pdf:
+        err = Exporter::writePdf(path, title, author, chapters);
+        break;
+    }
     if (!err.isEmpty()) {
         QMessageBox::warning(this, QStringLiteral("导出失败"), err);
         return;
@@ -192,14 +219,13 @@ void MainWindow::exportWholeBook(Exporter::Format format) {
         return;
     }
     const QString title = book.value(QStringLiteral("title")).toString();
-    const QString author = book.value(QStringLiteral("author")).toString();
-    const bool isTxt = (format == Exporter::Format::Txt);
-    doExport(Exporter::sanitizeFileName(title) + (isTxt ? QStringLiteral(".txt") : QStringLiteral(".doc")),
-             isTxt ? QStringLiteral("文本文件 (*.txt)") : QStringLiteral("Word 文档 (*.doc)"),
-             format, title, author, collectChapters(book, QString()));
+    const auto extFilter = exportExtFilter(format);
+    doExport(Exporter::sanitizeFileName(title) + extFilter.first, extFilter.second,
+             format, title, book.value(QStringLiteral("author")).toString(),
+             collectChapters(book, QString()));
 }
 
-void MainWindow::exportCurrentVolume() {
+void MainWindow::exportCurrentVolume(Exporter::Format format) {
     const QJsonObject book = m_tree->currentBook();
     if (book.isEmpty()) return;
     const QString volId = m_tree->currentVolumeId();
@@ -219,13 +245,14 @@ void MainWindow::exportCurrentVolume() {
         }
     }
     const QString title = book.value(QStringLiteral("title")).toString();
-    doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - %2.txt").arg(title, volTitle)),
-             QStringLiteral("文本文件 (*.txt)"), Exporter::Format::Txt,
+    const auto extFilter = exportExtFilter(format);
+    doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - %2%3").arg(title, volTitle, extFilter.first)),
+             extFilter.second, format,
              QStringLiteral("%1 - %2").arg(title, volTitle),
              book.value(QStringLiteral("author")).toString(), collectChapters(book, volId));
 }
 
-void MainWindow::exportCurrentChapter() {
+void MainWindow::exportCurrentChapter(Exporter::Format format) {
     const QJsonObject book = m_tree->currentBook();
     if (book.isEmpty()) return;
     const QString chId = m_tree->currentChapterId();
@@ -239,8 +266,9 @@ void MainWindow::exportCurrentChapter() {
         if (ch.value(QStringLiteral("id")).toString() == chId) {
             const QString title = book.value(QStringLiteral("title")).toString();
             const QString chTitle = ch.value(QStringLiteral("title")).toString();
-            doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - %2.txt").arg(title, chTitle)),
-                     QStringLiteral("文本文件 (*.txt)"), Exporter::Format::Txt,
+            const auto extFilter = exportExtFilter(format);
+            doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - %2%3").arg(title, chTitle, extFilter.first)),
+                     extFilter.second, format,
                      QStringLiteral("%1 - %2").arg(title, chTitle),
                      book.value(QStringLiteral("author")).toString(), QVector<QJsonObject>{ch});
             return;
@@ -261,9 +289,9 @@ void MainWindow::exportOutlines(Exporter::Format format) {
     QVector<QJsonObject> list;
     for (const auto &o : outlines) list.append(o.toObject());
     const QString title = book.value(QStringLiteral("title")).toString();
-    const bool isTxt = (format == Exporter::Format::Txt);
-    doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - 大纲%2").arg(title, isTxt ? QStringLiteral(".txt") : QStringLiteral(".doc"))),
-             isTxt ? QStringLiteral("文本文件 (*.txt)") : QStringLiteral("Word 文档 (*.doc)"),
+    const auto extFilter = exportExtFilter(format);
+    doExport(Exporter::sanitizeFileName(QStringLiteral("%1 - 大纲%2").arg(title, extFilter.first)),
+             extFilter.second,
              format, QStringLiteral("%1 - 大纲").arg(title),
              book.value(QStringLiteral("author")).toString(), list);
 }

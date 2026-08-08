@@ -4,12 +4,15 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QDebug>
+#include <QGuiApplication>
+#include <QProcess>
 #include <cstdio>
 
 static int failures = 0;
 #define CHECK(cond, name) do { if (cond) { qInfo().noquote() << "PASS:" << name; } else { qInfo().noquote() << "FAIL:" << name; ++failures; } } while (0)
 
-int main() {
+int main(int argc, char *argv[]) {
+    QGuiApplication app(argc, argv); // QPdfWriter/QTextDocument 需要 GUI 应用上下文
     // 显式日志 handler（无显示环境 qInfo 可能走系统日志）
     qInstallMessageHandler([](QtMsgType, const QMessageLogContext &, const QString &msg) {
         std::fprintf(stderr, "%s\n", msg.toUtf8().constData());
@@ -85,6 +88,52 @@ int main() {
     QVector<QJsonObject> empty;
     const QString outlineTxt = Exporter::buildTxt(QStringLiteral("测试书 - 大纲"), QString(), empty);
     CHECK(outlineTxt.contains(QStringLiteral("测试书 - 大纲")), "大纲空列表构造不崩");
+
+    // 8. buildDocx：zip 魔数 + OOXML 关键结构 + python3 zipfile 严格校验
+    const QByteArray docx = Exporter::buildDocx(QStringLiteral("测试书"), QStringLiteral("作者甲"), chs);
+    CHECK(docx.startsWith(QByteArray("PK\x03\x04")), "docx zip 魔数 PK\\x03\\x04");
+    CHECK(docx.size() > 0, "docx 非空");
+    CHECK(docx.contains("[Content_Types].xml") && docx.contains("word/document.xml"),
+          "docx 含 OOXML 必需部件名");
+    CHECK(docx.contains("<w:sz w:val=\"32\"/>"), "docx 书标题 16pt 加粗");
+    CHECK(docx.contains("第一章") && docx.contains("你好世界。"), "docx 章标题+正文");
+    const QString docxPath = QStringLiteral("/tmp/storyspire-qt-export-smoke.docx");
+    const QString derr2 = Exporter::writeFileBytes(docxPath, docx);
+    CHECK(derr2.isEmpty() && QFile::exists(docxPath), "docx 写盘");
+    QProcess py; // 用 python3 zipfile 严格校验：zip 完整性 + 条目数 + document.xml 内容
+    py.start(QStringLiteral("python3"),
+             {QStringLiteral("-c"),
+              QStringLiteral("import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); n=z.namelist(); "
+                             "assert len(n)==5 and 'word/document.xml' in n and '[Content_Types].xml' in n; "
+                             "d=z.read('word/document.xml').decode('utf-8'); "
+                             "assert '第一章' in d and '你好世界。' in d and '作者：作者甲' in d; print('ZIP_OK')"),
+              docxPath});
+    py.waitForFinished(15000);
+    CHECK(py.exitCode() == 0 && QString::fromUtf8(py.readAllStandardOutput()).contains(QStringLiteral("ZIP_OK")),
+          "docx zipfile 严格校验（5 条目 + document.xml 内容）");
+
+    // 9. buildPdfHtml：排版结构对齐 Electron htmlForPdf
+    const QString pdfHtml = Exporter::buildPdfHtml(QStringLiteral("测试书"), QStringLiteral("作者甲"), chs);
+    CHECK(pdfHtml.contains(QStringLiteral("<h1>测试书</h1>")), "pdf html 书名 h1");
+    CHECK(pdfHtml.contains(QStringLiteral("作者：作者甲")), "pdf html 作者");
+    CHECK(pdfHtml.contains(QStringLiteral("<h2 style=\"text-align:center")), "pdf html 章标题居中样式");
+    CHECK(pdfHtml.contains(QStringLiteral("第一章")) && pdfHtml.contains(QStringLiteral("你好世界。")),
+          "pdf html 章节内容");
+    CHECK(pdfHtml.contains(QStringLiteral("text-indent: 2em")), "pdf html 正文缩进 2em");
+    CHECK(pdfHtml.contains(QStringLiteral("<p>带HTML的正文</p>"))
+              && !pdfHtml.contains(QStringLiteral("<p><p>")) && !pdfHtml.contains(QStringLiteral("</p></p>")),
+          "pdf html 兼容 HTML 旧数据（strip 后单层段落）");
+
+    // 10. writePdf：QPdfWriter 真实渲染到 /tmp
+    const QString pdfPath = QStringLiteral("/tmp/storyspire-qt-export-smoke.pdf");
+    const QString perr = Exporter::writePdf(pdfPath, QStringLiteral("测试书"), QStringLiteral("作者甲"), chs);
+    QFile pdfOut(pdfPath);
+    CHECK(perr.isEmpty() && pdfOut.exists() && pdfOut.size() > 0, "pdf 渲染写盘");
+    if (pdfOut.open(QIODevice::ReadOnly)) {
+        const QByteArray head = pdfOut.read(5);
+        CHECK(head == QByteArray("%PDF-"), "pdf 文件头 %PDF-");
+        pdfOut.close();
+    }
 
     qInfo().noquote() << (failures == 0 ? "== ALL PASS ==" : QString("== %1 FAILURES ==").arg(failures));
     return failures == 0 ? 0 : 1;

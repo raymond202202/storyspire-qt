@@ -4,12 +4,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-QT_CFLAGS=$(pkg-config --cflags Qt6Core Qt6Widgets)
-QT_LIBS=$(pkg-config --libs Qt6Core Qt6Widgets)
+QT_CFLAGS=$(pkg-config --cflags Qt6Core Qt6Gui Qt6Widgets)
+QT_LIBS=$(pkg-config --libs Qt6Core Qt6Gui Qt6Widgets)
 
 echo "── Exporter 单测 ──"
 g++ -std=c++17 -fPIC tests/exporter_test.cpp src/Exporter.cpp $QT_CFLAGS $QT_LIBS -o /tmp/ssq_exporter_test
-/tmp/ssq_exporter_test
+QT_QPA_PLATFORM=offscreen /tmp/ssq_exporter_test
 
 echo "── 大纲功能测试（隔离目录）──"
 MOC=$(pkg-config --variable=libexecdir Qt6Core)/moc

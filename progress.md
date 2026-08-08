@@ -12,7 +12,7 @@
 - [x] **阶段 2 灵感库**：右侧灵感面板（读 inspirations.json，纯数组格式与 Electron 兼容；搜索/分类筛选/新建/编辑/删除；新增置顶）
 - [x] **阶段 3 AI 面板**：接 flare server（spawn node 子进程 'flare server'，JSON Lines 协议；写作专家 profile 生成于 ~/.config/storyspire-qt/story-expert.json；key 走 env/~/.storyspire/.env，flare 自读 ~/.flare/.env 兜底）；快捷动作 续写/润色/扩写/灵感创作；story_* 5 工具宿主代理执行；写回前确认（应用一次/本次会话/始终/拒绝，始终决策持久化 confirm.json）
 - [x] **阶段 6 大纲系统**：右侧新增「📋 大纲」面板（独立于正文，对齐 Electron addOutline/updateOutline/renameOutline/deleteOutline）：新建（输入标题）/编辑（500ms 防抖写回 + 字数）/重命名/删除（移入 trash 带 _outline:true）；outlines 数组与 Electron 同格式；tests/outline_test.cpp 20 项单测全过；顺带修复阶段 0 遗留 bug：字数统计正则 \u4e00 对 QRegularExpression 无效（zh 恒为 0），改 \x{4e00} 后 Editor/BookTree/AiPanel/OutlinePanel 四处字数统计恢复正常
-- [x] **阶段 5 导出**：文件→导出子菜单（对齐 Electron exporter.ts）：整书 TXT/DOC(RTF)、当前卷 TXT、当前章节 TXT、本书大纲 TXT/DOC；stripHtml 兼容旧 HTML 数据、RTF 转义、文件名安全化、QSaveFile 原子写；tests/exporter_test.cpp 14 项单测全过
+- [x] **阶段 5 导出**：文件→导出子菜单（对齐 Electron exporter.ts）：整书/单卷/单章/大纲 × TXT/DOCX/DOC(RTF)/PDF 四种格式；docx 为手写 OOXML zip（STORE，Word/WPS 可开，结构对齐 docx 分支）；pdf 走 QPdfWriter+QTextDocument（排版对齐 htmlForPdf）；stripHtml 兼容旧 HTML 数据、RTF 转义、文件名安全化、QSaveFile 原子写；tests/exporter_test.cpp 29 项单测全过
 - [x] **阶段 4 打磨**：浅色主题白底紫配 #6d4aff（全局 QSS）/ 状态栏保存状态（章节 + 保存状态同步）/ 字体设置（QFontDialog + QSettings 持久化）/ 菜单与快捷键（文件/编辑/帮助，Ctrl+S 保存、Ctrl+N 新建章节、F2 重命名）
 
 ## 迭代记录
@@ -25,7 +25,8 @@
 | 3 | 00:25 | AI 面板 | ✅ | flare server 集成；手动协议测试(握手+真实chat)通过；主程序 spawn 子进程正常；数据文件 md5 不变 |
 | 4 | 00:35 | 打磨 | ✅ | 浅色主题#6d4aff/状态栏/字体/菜单快捷键；构建 0 错误；冒烟 md5 不变 |
 | 5 | 01:10 | 导出 | ✅ | 导出子菜单 txt/doc(RTF)/大纲，对齐 exporter.ts；单测 14 PASS；冒烟 md5 不变 |
-| 6 | 01:30 | 大纲系统 | ✅ | 右侧📋大纲面板（新建/编辑/重命名/删除，trash 带_outline）；单测 20 PASS；修复字数正则bug(\u→\x{}) |
+| 6 | 01:30 | 大纲系统 | ✅ | 右侧📋大纲面板（新建/编辑/重命名/删除，trash 带_outline）；单测 20 PASS；修复字数正则bug(\\u→\\x{}) |
+| 7 | 01:52 | 导出补全 | ✅ | 对齐 Electron 四格式：整书/卷/章/大纲 × TXT/DOCX/DOC/PDF；docx 手写 OOXML zip（修复中央目录缺 date 字段 bug）；pdf QPdfWriter 渲染；单测 29 PASS；真实数据 docx/pdf 冒烟通过；md5 不变 |
 
 ## 完成状态
 
