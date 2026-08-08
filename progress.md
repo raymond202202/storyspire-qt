@@ -33,6 +33,8 @@
 | 10 | 03:40 | 全量回归验证 | ✅ | 无未完成阶段（7 阶段全部完成），本轮复查：cmake 构建 0 错误；单测全过（Exporter/大纲 18 PASS/预览 OK）；offscreen 冒烟 8s 无崩溃；books.json/inspirations.json md5 不变；git 工作区干净 |
 | 11 | 次日 | 全量回归验证 | ✅ | 无未完成阶段，本轮复查：cmake 构建 0 错误；单测全过（Exporter/大纲 20 PASS/预览 OK）；offscreen 冒烟 8s 无崩溃；数据 md5 不变；深度校验 books.json 顶层键 books/trash、book 字段（id/title/author/volumes/chapters/createdAt/updatedAt/settings/outlines）、chapter 字段（id/title/volumeId/content/wordCount/createdAt/updatedAt）、outline 字段全部与 Electron src/types/index.ts 定义一致，无格式漂移；git 工作区干净 |
 
+| 12 | 次日 | 全量回归验证 | ✅ | 无未完成阶段，本轮复查：cmake 构建 0 错误；单测全过（Exporter/大纲 20 PASS/预览 OK）；offscreen 冒烟 8s 无崩溃；数据 md5 不变（books.json ac6da96e / inspirations.json 18258e3c）；格式深度校验 PASS（顶层键 books/trash、book/chapter/volume/outline/trash 字段全部对齐 Electron src/types/index.ts，content 均为纯文本无 HTML）；顺带清理 progress.md 历史遗留 56 个 NUL 字节；git 工作区干净 |
+
 ## 完成状态
 
 ✅ **全部 7 个阶段完成**：骨架 → 编辑保存 → 灵感库 → AI 面板 → 打磨 → 导出 → 大纲系统 → 手机预览。
