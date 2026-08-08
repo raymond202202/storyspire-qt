@@ -126,7 +126,7 @@ void Editor::flushContent() {
 
 int Editor::countWords(const QString &text) const {
     // 与 Electron 版一致：中文字符数 + 英文单词数
-    const int zh = text.count(QRegularExpression(QStringLiteral("[\\u4e00-\\u9fff\\u3400-\\u4dbf]")));
+    const int zh = text.count(QRegularExpression(QStringLiteral("[\\x{4e00}-\\x{9fff}\\x{3400}-\\x{4dbf}]")));
     const int en = text.split(QRegularExpression(QStringLiteral("[^a-zA-Z]+")), Qt::SkipEmptyParts).size();
     return zh + en;
 }

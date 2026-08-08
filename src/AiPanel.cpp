@@ -479,7 +479,7 @@ QJsonObject AiPanel::makeResult(bool success, const QString &output,
 }
 
 int AiPanel::countWords(const QString &text) {
-    const int zh = text.count(QRegularExpression(QStringLiteral("[\\u4e00-\\u9fff\\u3400-\\u4dbf]")));
+    const int zh = text.count(QRegularExpression(QStringLiteral("[\\x{4e00}-\\x{9fff}\\x{3400}-\\x{4dbf}]")));
     const int en = text.split(QRegularExpression(QStringLiteral("[^a-zA-Z]+")), Qt::SkipEmptyParts).size();
     return zh + en;
 }

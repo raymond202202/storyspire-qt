@@ -43,6 +43,18 @@ public:
     /** story_create_chapter：新建章节（返回新章节 id，失败返回空） */
     QString createChapter(const QString &title, const QString &content);
 
+    // ── 大纲（对齐 Electron addOutline/updateOutline/renameOutline/deleteOutline）──
+    /** 当前书大纲数组（book.outlines，与 Electron 同格式） */
+    QJsonArray outlines() const;
+    /** 新建大纲（默认卷=第一卷；返回新大纲 id，失败返回空） */
+    QString addOutline(const QString &title, const QString &content);
+    /** 更新大纲内容（content/wordCount/updatedAt） */
+    void updateOutline(const QString &outlineId, const QString &content, int wordCount);
+    /** 重命名大纲（trim 后写盘） */
+    void renameOutline(const QString &outlineId, const QString &title);
+    /** 删除大纲（移入回收站 trash，条目带 _outline:true 对齐 Electron） */
+    void deleteOutline(const QString &outlineId);
+
 signals:
     void chapterSelected(const QString &bookId, const QString &chapterId, const QString &title, const QString &contentHtml);
     void chapterRenamed(const QString &bookId, const QString &chapterId, const QString &title);

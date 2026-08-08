@@ -27,6 +27,8 @@ qt_add_executable(storyspire-qt
     src/AiPanel.h
     src/Exporter.cpp
     src/Exporter.h
+    src/OutlinePanel.cpp
+    src/OutlinePanel.h
 )
 
 target_link_libraries(storyspire-qt PRIVATE Qt6::Widgets Qt6::Network Qt6::Sql)

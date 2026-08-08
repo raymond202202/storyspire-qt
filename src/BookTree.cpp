@@ -123,7 +123,7 @@ QJsonObject BookTree::currentBook() const {
 
 namespace {
 int bookCountWords(const QString &text) {
-    const int zh = text.count(QRegularExpression(QStringLiteral("[\\u4e00-\\u9fff\\u3400-\\u4dbf]")));
+    const int zh = text.count(QRegularExpression(QStringLiteral("[\\x{4e00}-\\x{9fff}\\x{3400}-\\x{4dbf}]")));
     const int en = text.split(QRegularExpression(QStringLiteral("[^a-zA-Z]+")), Qt::SkipEmptyParts).size();
     return zh + en;
 }
@@ -522,6 +522,125 @@ void BookTree::onNewChapter() {
     // 新章节直接打开
     emit chapterSelected(book.value("id").toString(), ch.value("id").toString(),
                          ch.value("title").toString(), QString());
+    emit booksChanged();
+}
+
+// ── 大纲（对齐 Electron addOutline/updateOutline/renameOutline/deleteOutline）──
+
+QJsonArray BookTree::outlines() const {
+    if (m_books.isEmpty()) return QJsonArray();
+    return m_books.first().toObject().value("outlines").toArray();
+}
+
+QString BookTree::addOutline(const QString &title, const QString &content) {
+    if (m_books.isEmpty()) return QString();
+    const QString now = QDateTime::currentDateTime().toString(Qt::ISODate);
+    QJsonObject book = m_books.at(0).toObject();
+    // 默认卷：当前选中章节所属卷，否则第一卷（对齐 Electron volumeId || story.volumes[0]?.id）
+    QString volId = m_contextChapterVolumeId;
+    const QJsonArray vols = book.value("volumes").toArray();
+    if (volId.isEmpty() && !vols.isEmpty())
+        volId = vols.first().toObject().value("id").toString();
+
+    QJsonObject outline;
+    outline["id"] = QStringLiteral("o_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    outline["title"] = title.trimmed().isEmpty() ? QStringLiteral("新大纲") : title.trimmed();
+    outline["volumeId"] = volId;
+    outline["content"] = content;
+    outline["wordCount"] = bookCountWords(content);
+    outline["createdAt"] = now;
+    outline["updatedAt"] = now;
+
+    QJsonArray outlines = book.value("outlines").toArray();
+    outlines.append(outline);
+    book["outlines"] = outlines;
+    book["updatedAt"] = now;
+    m_books.replace(0, book);
+    save();
+    emit booksChanged();
+    return outline.value("id").toString();
+}
+
+void BookTree::updateOutline(const QString &outlineId, const QString &content, int wordCount) {
+    if (m_books.isEmpty() || outlineId.isEmpty()) return;
+    const QString now = QDateTime::currentDateTime().toString(Qt::ISODate);
+    QJsonObject book = m_books.at(0).toObject();
+    QJsonArray outlines = book.value("outlines").toArray();
+    bool changed = false;
+    for (int i = 0; i < outlines.size(); ++i) {
+        QJsonObject o = outlines.at(i).toObject();
+        if (o.value("id").toString() == outlineId) {
+            o["content"] = content;
+            o["wordCount"] = wordCount;
+            o["updatedAt"] = now;
+            outlines.replace(i, o);
+            changed = true;
+            break;
+        }
+    }
+    if (!changed) return;
+    book["outlines"] = outlines;
+    book["updatedAt"] = now;
+    m_books.replace(0, book);
+    save();
+    emit booksChanged();
+}
+
+void BookTree::renameOutline(const QString &outlineId, const QString &title) {
+    if (m_books.isEmpty() || outlineId.isEmpty()) return;
+    const QString newTitle = title.trimmed();
+    if (newTitle.isEmpty()) return;
+    const QString now = QDateTime::currentDateTime().toString(Qt::ISODate);
+    QJsonObject book = m_books.at(0).toObject();
+    QJsonArray outlines = book.value("outlines").toArray();
+    for (int i = 0; i < outlines.size(); ++i) {
+        QJsonObject o = outlines.at(i).toObject();
+        if (o.value("id").toString() == outlineId) {
+            o["title"] = newTitle;
+            o["updatedAt"] = now;
+            outlines.replace(i, o);
+            break;
+        }
+    }
+    book["outlines"] = outlines;
+    book["updatedAt"] = now;
+    m_books.replace(0, book);
+    save();
+    emit booksChanged();
+}
+
+void BookTree::deleteOutline(const QString &outlineId) {
+    if (m_books.isEmpty() || outlineId.isEmpty()) return;
+    const QString now = QDateTime::currentDateTime().toString(Qt::ISODate);
+    QJsonObject book = m_books.at(0).toObject();
+    QJsonArray outlines = book.value("outlines").toArray();
+    QJsonObject target;
+    QJsonArray filtered;
+    for (const auto &v : outlines) {
+        const QJsonObject o = v.toObject();
+        if (o.value("id").toString() == outlineId) target = o;
+        else filtered.append(v);
+    }
+    if (target.isEmpty()) return;
+    // 移入回收站：data 带 _outline:true（对齐 Electron deleteOutline）
+    QJsonObject item;
+    item["id"] = QStringLiteral("trash_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    item["type"] = QStringLiteral("outline");
+    item["bookId"] = book.value("id").toString();
+    item["volumeId"] = target.value("volumeId").toString();
+    item["title"] = target.value("title").toString();
+    QJsonObject data = target;
+    data["_outline"] = true;
+    item["data"] = data;
+    item["deletedAt"] = now;
+    QJsonArray trash = m_trash;
+    trash.prepend(item);
+    m_trash = trash;
+
+    book["outlines"] = filtered;
+    book["updatedAt"] = now;
+    m_books.replace(0, book);
+    save();
     emit booksChanged();
 }
 

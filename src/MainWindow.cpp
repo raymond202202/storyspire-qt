@@ -3,6 +3,7 @@
 #include "Editor.h"
 #include "InspirationPanel.h"
 #include "AiPanel.h"
+#include "OutlinePanel.h"
 #include <QSplitter>
 #include <QTabWidget>
 #include <QStatusBar>
@@ -27,10 +28,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_inspiration = new InspirationPanel(this);
     m_ai = new AiPanel(this);
     m_ai->setBookTree(m_tree);
+    m_outline = new OutlinePanel(this);
+    m_outline->setBookTree(m_tree);
 
     auto *rightTabs = new QTabWidget(this);
     rightTabs->addTab(m_inspiration, QStringLiteral("💡 灵感"));
     rightTabs->addTab(m_ai, QStringLiteral("✨ AI 助手"));
+    rightTabs->addTab(m_outline, QStringLiteral("📋 大纲"));
 
     splitter->addWidget(m_tree);
     splitter->addWidget(m_editor);

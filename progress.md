@@ -11,6 +11,7 @@
 - [x] **阶段 1 编辑保存**：Editor 编辑内容实时写回 books.json（500ms 防抖写回 + 30s 兜底自动保存 + 切换章节时保存当前）；章节重命名（右键菜单/标题栏编辑，trim 后写盘）+ 删除（确认后移入回收站 trash，格式对齐 Electron TrashItem）
 - [x] **阶段 2 灵感库**：右侧灵感面板（读 inspirations.json，纯数组格式与 Electron 兼容；搜索/分类筛选/新建/编辑/删除；新增置顶）
 - [x] **阶段 3 AI 面板**：接 flare server（spawn node 子进程 'flare server'，JSON Lines 协议；写作专家 profile 生成于 ~/.config/storyspire-qt/story-expert.json；key 走 env/~/.storyspire/.env，flare 自读 ~/.flare/.env 兜底）；快捷动作 续写/润色/扩写/灵感创作；story_* 5 工具宿主代理执行；写回前确认（应用一次/本次会话/始终/拒绝，始终决策持久化 confirm.json）
+- [x] **阶段 6 大纲系统**：右侧新增「📋 大纲」面板（独立于正文，对齐 Electron addOutline/updateOutline/renameOutline/deleteOutline）：新建（输入标题）/编辑（500ms 防抖写回 + 字数）/重命名/删除（移入 trash 带 _outline:true）；outlines 数组与 Electron 同格式；tests/outline_test.cpp 20 项单测全过；顺带修复阶段 0 遗留 bug：字数统计正则 \u4e00 对 QRegularExpression 无效（zh 恒为 0），改 \x{4e00} 后 Editor/BookTree/AiPanel/OutlinePanel 四处字数统计恢复正常
 - [x] **阶段 5 导出**：文件→导出子菜单（对齐 Electron exporter.ts）：整书 TXT/DOC(RTF)、当前卷 TXT、当前章节 TXT、本书大纲 TXT/DOC；stripHtml 兼容旧 HTML 数据、RTF 转义、文件名安全化、QSaveFile 原子写；tests/exporter_test.cpp 14 项单测全过
 - [x] **阶段 4 打磨**：浅色主题白底紫配 #6d4aff（全局 QSS）/ 状态栏保存状态（章节 + 保存状态同步）/ 字体设置（QFontDialog + QSettings 持久化）/ 菜单与快捷键（文件/编辑/帮助，Ctrl+S 保存、Ctrl+N 新建章节、F2 重命名）
 
@@ -23,12 +24,13 @@
 | 2 | 00:00 | 灵感库 | ✅ | 右侧灵感面板，兼容 inspirations.json；冒烟测试两数据文件 md5 不变 |
 | 3 | 00:25 | AI 面板 | ✅ | flare server 集成；手动协议测试(握手+真实chat)通过；主程序 spawn 子进程正常；数据文件 md5 不变 |
 | 4 | 00:35 | 打磨 | ✅ | 浅色主题#6d4aff/状态栏/字体/菜单快捷键；构建 0 错误；冒烟 md5 不变 |
-| 5 | 00:52 | 导出 | ✅ | 导出子菜单 txt/doc(RTF)/大纲，对齐 exporter.ts；单测 14 PASS；冒烟 md5 不变 |
+| 5 | 01:10 | 导出 | ✅ | 导出子菜单 txt/doc(RTF)/大纲，对齐 exporter.ts；单测 14 PASS；冒烟 md5 不变 |
+| 6 | 01:30 | 大纲系统 | ✅ | 右侧📋大纲面板（新建/编辑/重命名/删除，trash 带_outline）；单测 20 PASS；修复字数正则bug(\u→\x{}) |
 
 ## 完成状态
 
-✅ **全部 5 个阶段完成**：骨架 → 编辑保存 → 灵感库 → AI 面板 → 打磨 → 导出。
-功能对齐 Electron 版 StorySpire（轻量版）：数据兼容 books.json / inspirations.json（同路径同格式，切换版本数据不丢）；导出 txt/doc 对齐 exporter.ts（整书/单卷/单章/大纲）。
+✅ **全部 6 个阶段完成**：骨架 → 编辑保存 → 灵感库 → AI 面板 → 打磨 → 导出 → 大纲系统。
+功能对齐 Electron 版 StorySpire（轻量版）：数据兼容 books.json / inspirations.json（同路径同格式，切换版本数据不丢）；导出 txt/doc 对齐 exporter.ts（整书/单卷/单章/大纲）；大纲独立存储 book.outlines 可编辑可导出。
 已知边界：章节 content 存纯文本（Electron HTML 显示为纯文本，不做富文本迁移）；AI 写回章节经确认后直接落盘，若写回的是当前编辑章节会刷新编辑器（用户未保存的输入将被 AI 内容替换，与 Electron 行为一致）。
 
 ## 构建命令

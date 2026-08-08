@@ -9,6 +9,7 @@ class BookTree;
 class Editor;
 class InspirationPanel;
 class AiPanel;
+class OutlinePanel;
 class QLabel;
 
 class MainWindow : public QMainWindow {
@@ -21,6 +22,7 @@ private:
     Editor *m_editor = nullptr;
     InspirationPanel *m_inspiration = nullptr;
     AiPanel *m_ai = nullptr;
+    OutlinePanel *m_outline = nullptr;
     QLabel *m_statusChapter = nullptr;
     QLabel *m_statusSave = nullptr;
 
