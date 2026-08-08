@@ -14,6 +14,7 @@
 - [x] **阶段 6 大纲系统**：右侧新增「📋 大纲」面板（独立于正文，对齐 Electron addOutline/updateOutline/renameOutline/deleteOutline）：新建（输入标题）/编辑（500ms 防抖写回 + 字数）/重命名/删除（移入 trash 带 _outline:true）；outlines 数组与 Electron 同格式；tests/outline_test.cpp 20 项单测全过；顺带修复阶段 0 遗留 bug：字数统计正则 \u4e00 对 QRegularExpression 无效（zh 恒为 0），改 \x{4e00} 后 Editor/BookTree/AiPanel/OutlinePanel 四处字数统计恢复正常
 - [x] **阶段 5 导出**：文件→导出子菜单（对齐 Electron exporter.ts）：整书/单卷/单章/大纲 × TXT/DOCX/DOC(RTF)/PDF 四种格式；docx 为手写 OOXML zip（STORE，Word/WPS 可开，结构对齐 docx 分支）；pdf 走 QPdfWriter+QTextDocument（排版对齐 htmlForPdf）；stripHtml 兼容旧 HTML 数据、RTF 转义、文件名安全化、QSaveFile 原子写；tests/exporter_test.cpp 29 项单测全过
 - [x] **阶段 4 打磨**：浅色主题白底紫配 #6d4aff（全局 QSS）/ 状态栏保存状态（章节 + 保存状态同步）/ 字体设置（QFontDialog + QSettings 持久化）/ 菜单与快捷键（文件/编辑/帮助，Ctrl+S 保存、Ctrl+N 新建章节、F2 重命名）
+- [x] **阶段 7 手机预览**：右侧新增「📱 预览」面板（对齐 Electron PreviewPanel + PHONE_PRESETS）：6 预设机型（iPhone 17 Pro Max/17/16/14/Galaxy S24/Pixel 9）+ 自定义尺寸（可保存命名/删除，QSettings 持久化对齐 localStorage）；实时渲染当前章节/草稿（编辑中未保存内容也实时显示，草稿优先）；手机壳自绘（深色圆角外壳/灵动岛/状态栏时间/标题/正文/字数/Home 条），HTML 旧数据剥离为纯文本；Editor 新增 editingPreview 信号（每次输入即发）；tests/preview_test.cpp 单测通过
 
 ## 迭代记录
 
@@ -27,10 +28,11 @@
 | 5 | 01:10 | 导出 | ✅ | 导出子菜单 txt/doc(RTF)/大纲，对齐 exporter.ts；单测 14 PASS；冒烟 md5 不变 |
 | 6 | 01:30 | 大纲系统 | ✅ | 右侧📋大纲面板（新建/编辑/重命名/删除，trash 带_outline）；单测 20 PASS；修复字数正则bug(\\u→\\x{}) |
 | 7 | 01:52 | 导出补全 | ✅ | 对齐 Electron 四格式：整书/卷/章/大纲 × TXT/DOCX/DOC/PDF；docx 手写 OOXML zip（修复中央目录缺 date 字段 bug）；pdf QPdfWriter 渲染；单测 29 PASS；真实数据 docx/pdf 冒烟通过；md5 不变 |
+| 8 | 02:29 | 手机预览 | ✅ | 右侧📱预览面板：6预设机型+自定义尺寸(保存命名/删除,QSettings持久化)+实时渲染(编辑中未保存内容也显示,草稿优先)+手机壳自绘(灵动岛/状态栏时间/标题/正文/字数/Home条)；Editor 新增 editingPreview 信号(每次输入即发)；单测 preview_test PASS；冒烟 6s 无崩溃；md5 不变 |
 
 ## 完成状态
 
-✅ **全部 6 个阶段完成**：骨架 → 编辑保存 → 灵感库 → AI 面板 → 打磨 → 导出 → 大纲系统。
+✅ **全部 7 个阶段完成**：骨架 → 编辑保存 → 灵感库 → AI 面板 → 打磨 → 导出 → 大纲系统 → 手机预览。
 功能对齐 Electron 版 StorySpire（轻量版）：数据兼容 books.json / inspirations.json（同路径同格式，切换版本数据不丢）；导出 txt/doc 对齐 exporter.ts（整书/单卷/单章/大纲）；大纲独立存储 book.outlines 可编辑可导出。
 已知边界：章节 content 存纯文本（Electron HTML 显示为纯文本，不做富文本迁移）；AI 写回章节经确认后直接落盘，若写回的是当前编辑章节会刷新编辑器（用户未保存的输入将被 AI 内容替换，与 Electron 行为一致）。
 
