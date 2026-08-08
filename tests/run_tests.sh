@@ -18,6 +18,13 @@ g++ -std=c++17 -fPIC tests/outline_test.cpp src/BookTree.cpp /tmp/ssq_moc_BookTr
     $QT_CFLAGS $QT_LIBS -o /tmp/ssq_outline_test
 QT_QPA_PLATFORM=offscreen /tmp/ssq_outline_test
 
+echo "── 预览面板单测 ──"
+MOC=$(pkg-config --variable=libexecdir Qt6Core)/moc
+"$MOC" src/PreviewPanel.h -o /tmp/ssq_moc_PreviewPanel.cpp
+g++ -std=c++17 -fPIC tests/preview_test.cpp src/PreviewPanel.cpp /tmp/ssq_moc_PreviewPanel.cpp \
+    $QT_CFLAGS $QT_LIBS -o /tmp/ssq_preview_test
+QT_QPA_PLATFORM=offscreen /tmp/ssq_preview_test
+
 echo "── 数据文件 md5（确认未被测试改动）──"
 md5sum "$HOME/.config/storyspire-data/books.json" "$HOME/.config/storyspire-data/inspirations.json"
 echo "ALL TESTS DONE"

@@ -39,7 +39,14 @@ Editor::Editor(QWidget *parent) : QWidget(parent) {
         m_wordCount->setText(QStringLiteral("%1 字").arg(countWords(m_body->toPlainText())));
         m_saveState->setText(QStringLiteral("● 未保存"));
         emit saveStateChanged(m_saveState->text());
+        emit editingPreview(m_title->text(), m_body->toPlainText());
         m_autoSave->start();
+    });
+
+    // 标题栏实时预览（输入中即同步预览标题）
+    connect(m_title, &QLineEdit::textChanged, this, [this](const QString &) {
+        if (m_loading) return;
+        emit editingPreview(m_title->text(), m_body->toPlainText());
     });
 
     // 标题栏编辑（回车/失焦）→ 重命名章节
@@ -74,6 +81,7 @@ void Editor::loadChapter(const QString &bookId, const QString &chapterId,
     m_wordCount->setText(QStringLiteral("%1 字").arg(countWords(contentHtml)));
     m_saveState->setText(QStringLiteral("✓ 已保存"));
     emit saveStateChanged(m_saveState->text());
+    emit editingPreview(title, contentHtml);
 }
 
 void Editor::clearChapter() {
@@ -87,10 +95,12 @@ void Editor::clearChapter() {
     m_saveState->clear();
     emit saveStateChanged(QString());
     m_loading = false;
+    emit editingPreview(QString(), QString());
 }
 
 void Editor::updateTitle(const QString &title) {
     if (m_title->text() != title) m_title->setText(title);
+    emit editingPreview(m_title->text(), m_body->toPlainText());
 }
 
 void Editor::reloadContent(const QString &content) {
@@ -102,6 +112,7 @@ void Editor::reloadContent(const QString &content) {
     m_wordCount->setText(QStringLiteral("%1 字").arg(countWords(content)));
     m_saveState->setText(QStringLiteral("✓ 已保存（AI 写回）"));
     emit saveStateChanged(m_saveState->text());
+    emit editingPreview(m_title->text(), content);
 }
 
 void Editor::saveNow() {

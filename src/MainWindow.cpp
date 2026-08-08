@@ -4,6 +4,7 @@
 #include "InspirationPanel.h"
 #include "AiPanel.h"
 #include "OutlinePanel.h"
+#include "PreviewPanel.h"
 #include <QSplitter>
 #include <QTabWidget>
 #include <QStatusBar>
@@ -36,6 +37,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     rightTabs->addTab(m_inspiration, QStringLiteral("💡 灵感"));
     rightTabs->addTab(m_ai, QStringLiteral("✨ AI 助手"));
     rightTabs->addTab(m_outline, QStringLiteral("📋 大纲"));
+    m_preview = new PreviewPanel(this);
+    rightTabs->addTab(m_preview, QStringLiteral("📱 预览"));
 
     splitter->addWidget(m_tree);
     splitter->addWidget(m_editor);
@@ -52,6 +55,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
                                                              const QString &title, const QString &) {
         m_statusChapter->setText(QStringLiteral("当前章节：%1").arg(title));
     });
+    // 实时预览（草稿优先：编辑中未保存内容也实时显示）
+    connect(m_tree, &BookTree::chapterSelected, this,
+            [this](const QString &, const QString &, const QString &title, const QString &contentHtml) {
+                m_preview->setPreview(title, contentHtml);
+            });
+    connect(m_editor, &Editor::editingPreview, m_preview, &PreviewPanel::setPreview);
 
     // 编辑器写回 → 树落盘（实时保存）
     connect(m_editor, &Editor::contentEdited, m_tree, &BookTree::applyChapterContent);

@@ -10,6 +10,7 @@ class Editor;
 class InspirationPanel;
 class AiPanel;
 class OutlinePanel;
+class PreviewPanel;
 class QLabel;
 
 class MainWindow : public QMainWindow {
@@ -23,6 +24,7 @@ private:
     InspirationPanel *m_inspiration = nullptr;
     AiPanel *m_ai = nullptr;
     OutlinePanel *m_outline = nullptr;
+    PreviewPanel *m_preview = nullptr;
     QLabel *m_statusChapter = nullptr;
     QLabel *m_statusSave = nullptr;
 

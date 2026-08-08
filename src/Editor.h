@@ -22,6 +22,8 @@ signals:
                        const QString &content, int wordCount);
     /** 标题编辑完成（回车/失焦） */
     void titleEdited(const QString &bookId, const QString &chapterId, const QString &title);
+    /** 实时预览（每次输入即发出，草稿优先：未保存内容也实时显示；loadChapter/reload 也会发） */
+    void editingPreview(const QString &title, const QString &content);
     /** 保存状态文本变化（供状态栏显示） */
     void saveStateChanged(const QString &text);
 
